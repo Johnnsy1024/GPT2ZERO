@@ -5,12 +5,14 @@
 ## 功能特性
 
 - ✅ 完整的GPT-2模型架构实现（支持small、medium、large、xl版本）
+- ✅ 内置 `gpt2-mini` 快速验证配置，便于本机 smoke test
 - ✅ 基于Transformer的解码器架构
 - ✅ 多头自注意力机制
 - ✅ 位置编码和前馈网络
 - ✅ 文本生成功能（支持温度采样、top-k、top-p）
 - ✅ 训练脚本和数据处理工具
 - ✅ 交互式文本生成界面
+- ✅ `gpt2-mini` 使用本地字符级词表，适合小数据快速收敛
 - ✅ 模型评估和可视化工具
 - ✅ 支持ONNX模型导出
 
@@ -46,8 +48,8 @@ python utils.py
 
 ### 3. 训练模型
 ```bash
-# 使用默认参数训练GPT-2 small
-python train.py
+# 使用轻量配置快速验证
+python train.py --model_type gpt2-mini --epochs 1 --batch_size 2 --max_length 64
 
 # 训练GPT-2 medium
 python train.py --model_type gpt2-medium --batch_size 2 --epochs 5
@@ -59,7 +61,7 @@ python train.py --device cuda
 ### 4. 生成文本
 ```bash
 # 使用提示生成文本
-python generate.py --prompt "人工智能的未来"
+python generate.py --model_type gpt2-mini --prompt "人工智能的未来"
 
 # 交互式生成
 python generate.py --interactive
@@ -67,6 +69,8 @@ python generate.py --interactive
 # 批量生成
 python generate.py --input_file ./data/test_prompts.txt --output_file ./results.txt
 ```
+
+`gpt2-mini` 的训练会在检查点目录额外保存 `tokenizer.json`，生成时会自动复用这份词表。
 
 ## 项目结构
 
@@ -92,10 +96,11 @@ gpt2-implementation/
 
 ### 模型配置
 
-GPT-2有四个预定义配置：
+项目内置五个预定义配置：
 
 | 模型类型 | 参数量 | 层数 | 隐藏维度 | 注意力头数 |
 |---------|--------|------|----------|------------|
+| gpt2-mini | 轻量验证 | 4 | 256 | 4 |
 | gpt2 | 124M | 12 | 768 | 12 |
 | gpt2-medium | 355M | 24 | 1024 | 16 |
 | gpt2-large | 774M | 36 | 1280 | 20 |
@@ -107,10 +112,10 @@ GPT-2有四个预定义配置：
 ```bash
 python train.py \
   --data_path ./data \
-  --model_type gpt2 \
+  --model_type gpt2-mini \
   --batch_size 4 \
   --epochs 10 \
-  --learning_rate 5e-5 \
+  --learning_rate 3e-4 \
   --max_length 512 \
   --save_dir ./checkpoints
 ```

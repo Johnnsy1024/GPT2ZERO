@@ -1,3 +1,4 @@
 .venv/
 checkpoints/
+checkpoints_fast/
 __pycache__/

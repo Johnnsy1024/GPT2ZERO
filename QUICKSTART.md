@@ -56,14 +56,16 @@ create_sample_data(num_samples=100)
 ### 快速训练（小规模）
 ```bash
 # 快速训练（1个epoch，小批量）
-python train.py --epochs 1 --batch_size 2 --max_length 64
+python train.py --model_type gpt2-mini --epochs 1 --batch_size 2 --max_length 64
 ```
 
 ### 快速生成
 ```bash
 # 使用预训练模型生成文本
-python generate.py --prompt "人工智能" --max_length 50
+python generate.py --model_type gpt2-mini --prompt "人工智能" --max_length 50
 ```
+
+`gpt2-mini` 会自动在 `checkpoints/tokenizer.json` 保存训练时构建的字符词表，生成阶段默认会读取它。
 
 ## 4. 完整使用流程
 
@@ -79,7 +81,7 @@ python utils.py
 ### 步骤2：训练模型
 ```bash
 # 基础训练（GPT-2 small）
-python train.py
+python train.py --model_type gpt2-mini --epochs 1 --batch_size 2 --max_length 64
 
 # 进阶训练（GPT-2 medium，GPU加速）
 python train.py --model_type gpt2-medium --device cuda --epochs 5
@@ -98,7 +100,7 @@ python train.py \
 ### 步骤3：生成文本
 ```bash
 # 单次生成
-python generate.py --prompt "今天的天气很好，" --max_length 100
+python generate.py --model_type gpt2-mini --prompt "今天的天气很好，" --max_length 100
 
 # 交互式生成
 python generate.py --interactive
@@ -213,6 +215,6 @@ small_config = GPT2Config(
 
 ---
 
-**提示**: 这是一个教育目的的实现，首次运行时可能需要下载分词器数据（约500MB）。确保有稳定的网络连接。
+**提示**: `gpt2-mini` 是项目内置的快速验证配置，适合本机 CPU 做 smoke test。首次运行标准 GPT-2 分词器时可能需要联网下载分词器数据。
 
 **开始您的GPT-2之旅吧！** 🚀
