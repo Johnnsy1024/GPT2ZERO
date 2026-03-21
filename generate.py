@@ -9,6 +9,7 @@ from generation_pipeline import (
     interactive_mode,
     load_generation_tokenizer,
     load_model,
+    save_single_prompt_results,
     strip_prompt_prefix,
 )
 
@@ -48,7 +49,7 @@ def build_arg_parser():
         "--output_file",
         type=str,
         default="./results/generated_texts.txt",
-        help="输出文件（批量模式）",
+        help="输出文件（单条/批量模式）",
     )
     parser.add_argument("--interactive", action="store_true", help="交互式模式")
     parser.add_argument(
@@ -136,6 +137,8 @@ def main():
             num_return_sequences=args.num_return_sequences,
         )
         print_single_prompt_results(args.prompt, generated_texts, args.num_return_sequences)
+        save_single_prompt_results(args.prompt, generated_texts, args.output_file)
+        print(f"结果已写入: {args.output_file}")
 
     else:
         print("未指定生成模式")

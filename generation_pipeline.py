@@ -95,6 +95,39 @@ def strip_prompt_prefix(prompt: str, text: str) -> str:
     return text
 
 
+def save_generation_results(results, output_file: str):
+    """Persist generation results in txt or json format."""
+    print(f"保存结果到 {output_file}...")
+    output_dir = os.path.dirname(output_file)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    if output_file.endswith(".json"):
+        with open(output_file, "w", encoding="utf-8") as file:
+            json.dump(results, file, ensure_ascii=False, indent=2)
+        return
+
+    with open(output_file, "w", encoding="utf-8") as file:
+        for result in results:
+            file.write(f"提示: {result['prompt']}\n")
+            file.write(f"生成文本: {result['generated_text']}\n")
+            file.write(f"新内容: {result['new_text']}\n")
+            file.write("-" * 80 + "\n")
+
+
+def save_single_prompt_results(prompt: str, generated_texts, output_file: str):
+    """Save one prompt's generation outputs using the same format as batch mode."""
+    results = [
+        {
+            "prompt": prompt,
+            "generated_text": text,
+            "new_text": strip_prompt_prefix(prompt, text),
+        }
+        for text in generated_texts
+    ]
+    save_generation_results(results, output_file)
+
+
 def interactive_mode(model, tokenizer, device, generation_params):
     """Run the interactive generation loop used by generate.py."""
     print("\n" + "=" * 60)
@@ -243,20 +276,5 @@ def batch_mode(model, tokenizer, device, input_file, output_file, generation_par
                 }
             )
 
-    print(f"保存结果到 {output_file}...")
-    output_dir = os.path.dirname(output_file)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    if output_file.endswith(".json"):
-        with open(output_file, "w", encoding="utf-8") as file:
-            json.dump(results, file, ensure_ascii=False, indent=2)
-    else:
-        with open(output_file, "w", encoding="utf-8") as file:
-            for result in results:
-                file.write(f"提示: {result['prompt']}\n")
-                file.write(f"生成文本: {result['generated_text']}\n")
-                file.write(f"新内容: {result['new_text']}\n")
-                file.write("-" * 80 + "\n")
-
+    save_generation_results(results, output_file)
     print(f"完成! 生成了 {len(results)} 个结果")

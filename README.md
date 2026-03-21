@@ -57,6 +57,8 @@ python generate.py --model_type gpt2-mini --prompt "人工智能的未来"
 python generate.py --input_file ./data/test_prompts.txt
 ```
 
+单条 `--prompt` 模式现在也会默认把结果写到同一个文件；如需改路径，可显式传 `--output_file`。
+
 ## 项目结构
 
 ```text

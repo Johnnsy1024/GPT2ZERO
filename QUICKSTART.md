@@ -52,6 +52,8 @@ python generate.py --input_file ./data/test_prompts.txt
 
 默认结果会写到 `results/generated_texts.txt`。
 
+单条 `--prompt` 模式也会写这个文件。
+
 ## 常用命令
 
 ```bash
