@@ -1,69 +1,68 @@
+import argparse
 import json
 import os
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
     import torch
 
 
+MODEL_CHOICES = ["gpt2-mini", "gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl"]
+
+
 def count_parameters(model: "torch.nn.Module") -> Tuple[int, int]:
-    """计算模型参数数量
-
-    Args:
-        model: PyTorch模型
-
-    Returns:
-        total_params: 总参数数量
-        trainable_params: 可训练参数数量
-    """
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-
+    """计算模型参数数量。"""
+    total_params = sum(param.numel() for param in model.parameters())
+    trainable_params = sum(
+        param.numel() for param in model.parameters() if param.requires_grad
+    )
     return total_params, trainable_params
 
 
 def print_model_summary(model: "torch.nn.Module"):
-    """打印模型摘要"""
+    """打印逐层参数摘要。"""
     print("=" * 80)
     print("模型摘要")
     print("=" * 80)
 
     total_params, trainable_params = count_parameters(model)
-
     print(f"总参数: {total_params:,}")
     print(f"可训练参数: {trainable_params:,}")
     print(f"不可训练参数: {total_params - trainable_params:,}")
 
     print("\n各层参数:")
     print("-" * 80)
-
     for name, param in model.named_parameters():
         print(
-            f"{name:50} {str(param.shape):30} {param.numel():10,} {'可训练' if param.requires_grad else '冻结'}"
+            f"{name:50} {str(param.shape):30} {param.numel():10,} "
+            f"{'可训练' if param.requires_grad else '冻结'}"
         )
 
     print("=" * 80)
 
 
 def save_model_info(model: "torch.nn.Module", save_path: str):
-    """保存模型信息到文件"""
+    """保存模型参数信息到 JSON 文件。"""
     model_info = {
-        "total_params": sum(p.numel() for p in model.parameters()),
-        "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "total_params": sum(param.numel() for param in model.parameters()),
+        "trainable_params": sum(
+            param.numel() for param in model.parameters() if param.requires_grad
+        ),
         "layers": [],
     }
 
     for name, param in model.named_parameters():
-        layer_info = {
-            "name": name,
-            "shape": list(param.shape),
-            "num_params": param.numel(),
-            "trainable": param.requires_grad,
-        }
-        model_info["layers"].append(layer_info)
+        model_info["layers"].append(
+            {
+                "name": name,
+                "shape": list(param.shape),
+                "num_params": param.numel(),
+                "trainable": param.requires_grad,
+            }
+        )
 
-    with open(save_path, "w", encoding="utf-8") as f:
-        json.dump(model_info, f, indent=2, ensure_ascii=False)
+    with open(save_path, "w", encoding="utf-8") as file:
+        json.dump(model_info, file, indent=2, ensure_ascii=False)
 
     print(f"模型信息已保存到: {save_path}")
 
@@ -71,18 +70,9 @@ def save_model_info(model: "torch.nn.Module", save_path: str):
 def calculate_model_size(
     model: "torch.nn.Module", precision_bits: int = 32
 ) -> Dict[str, float]:
-    """计算模型大小
-
-    Args:
-        model: PyTorch模型
-        precision_bits: 精度位数（32 for float32, 16 for float16, 8 for int8）
-
-    Returns:
-        包含不同单位模型大小的字典
-    """
+    """计算不同精度下的模型占用。"""
     total_params, _ = count_parameters(model)
 
-    # 计算大小（字节）
     if precision_bits == 32:
         bytes_per_param = 4
     elif precision_bits == 16:
@@ -93,9 +83,7 @@ def calculate_model_size(
         raise ValueError(f"不支持的精度位数: {precision_bits}")
 
     total_bytes = total_params * bytes_per_param
-
-    # 转换为不同单位
-    size_info = {
+    return {
         "parameters": total_params,
         "bytes": total_bytes,
         "kilobytes": total_bytes / 1024,
@@ -104,11 +92,9 @@ def calculate_model_size(
         "precision_bits": precision_bits,
     }
 
-    return size_info
-
 
 def print_model_size(model: "torch.nn.Module", model_name: str = "模型"):
-    """打印模型大小信息"""
+    """打印不同精度下的模型大小。"""
     size_info_32 = calculate_model_size(model, precision_bits=32)
     size_info_16 = calculate_model_size(model, precision_bits=16)
     size_info_8 = calculate_model_size(model, precision_bits=8)
@@ -123,11 +109,24 @@ def print_model_size(model: "torch.nn.Module", model_name: str = "模型"):
     print("-" * 60)
 
 
-def create_sample_data(output_dir: str = "./data", num_samples: int = 1000):
-    """创建示例训练数据"""
-    os.makedirs(output_dir, exist_ok=True)
+def create_sample_data(
+    output_dir: str = "./data",
+    num_samples: int = 1000,
+    overwrite: bool = False,
+):
+    """创建示例训练数据与测试提示。
 
-    # 示例文本
+    默认在目标文件已存在时不覆盖，避免无意修改仓库内的示例数据。
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, "training_data.txt")
+    test_file = os.path.join(output_dir, "test_prompts.txt")
+
+    if not overwrite and os.path.exists(output_file) and os.path.exists(test_file):
+        print(f"示例数据已存在，跳过覆盖: {output_file}")
+        print(f"测试提示已存在，跳过覆盖: {test_file}")
+        return output_file, test_file
+
     sample_texts = [
         "人工智能是计算机科学的一个分支，旨在创造能够执行通常需要人类智能的任务的机器。",
         "机器学习是人工智能的一个子领域，使计算机能够从数据中学习而无需明确编程。",
@@ -141,29 +140,23 @@ def create_sample_data(output_dir: str = "./data", num_samples: int = 1000):
         "神经网络是由相互连接的节点组成的计算系统，灵感来自人脑的生物神经网络。",
     ]
 
-    # 生成更多样本
     all_texts = []
-    for i in range(num_samples):
-        base_text = sample_texts[i % len(sample_texts)]
-        # 添加一些变化
-        if i % 3 == 0:
-            text = f"第{i+1}个示例: {base_text} 这是关于人工智能的一个重要概念。"
-        elif i % 3 == 1:
+    for index in range(num_samples):
+        base_text = sample_texts[index % len(sample_texts)]
+        if index % 3 == 0:
+            text = f"第{index + 1}个示例: {base_text} 这是关于人工智能的一个重要概念。"
+        elif index % 3 == 1:
             text = f"让我们讨论一下: {base_text} 这个领域近年来取得了显著进展。"
         else:
             text = f"重要知识点: {base_text} 理解这个概念对于掌握人工智能至关重要。"
         all_texts.append(text)
 
-    # 保存到文件
-    output_file = os.path.join(output_dir, "training_data.txt")
-    with open(output_file, "w", encoding="utf-8") as f:
+    with open(output_file, "w", encoding="utf-8") as file:
         for text in all_texts:
-            f.write(text + "\n")
+            file.write(text + "\n")
 
     print(f"已创建 {len(all_texts)} 个示例文本到: {output_file}")
 
-    # 创建测试数据
-    test_file = os.path.join(output_dir, "test_prompts.txt")
     test_prompts = [
         "人工智能的未来",
         "机器学习如何工作",
@@ -177,41 +170,33 @@ def create_sample_data(output_dir: str = "./data", num_samples: int = 1000):
         "神经网络的基础",
     ]
 
-    with open(test_file, "w", encoding="utf-8") as f:
+    with open(test_file, "w", encoding="utf-8") as file:
         for prompt in test_prompts:
-            f.write(prompt + "\n")
+            file.write(prompt + "\n")
 
     print(f"已创建测试提示到: {test_file}")
-
     return output_file, test_file
 
 
 def analyze_text_data(file_path: str, max_samples: int = 1000):
-    """分析文本数据"""
+    """分析文本文件的样本规模与长度分布。"""
     if not os.path.exists(file_path):
         print(f"文件不存在: {file_path}")
         return None
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]
+    with open(file_path, "r", encoding="utf-8") as file:
+        lines = [line.strip() for line in file if line.strip()]
 
     if not lines:
         print("文件为空")
         return None
 
-    # 限制样本数量
     lines = lines[:max_samples]
-
-    # 计算统计信息
     num_samples = len(lines)
     total_chars = sum(len(line) for line in lines)
     total_words = sum(len(line.split()) for line in lines)
-
-    # 计算平均长度
     avg_chars = total_chars / num_samples
     avg_words = total_words / num_samples
-
-    # 计算长度分布
     char_lengths = [len(line) for line in lines]
     word_lengths = [len(line.split()) for line in lines]
 
@@ -246,17 +231,13 @@ def analyze_text_data(file_path: str, max_samples: int = 1000):
 
 
 def convert_model_to_onnx(
-    model, dummy_input, onnx_path, input_names=None, output_names=None
+    model,
+    dummy_input,
+    onnx_path,
+    input_names=None,
+    output_names=None,
 ):
-    """将PyTorch模型转换为ONNX格式
-
-    Args:
-        model: PyTorch模型
-        dummy_input: 示例输入
-        onnx_path: ONNX文件保存路径
-        input_names: 输入名称列表
-        output_names: 输出名称列表
-    """
+    """将 PyTorch 模型导出为 ONNX。"""
     if input_names is None:
         input_names = ["input_ids", "attention_mask"]
     if output_names is None:
@@ -282,33 +263,109 @@ def convert_model_to_onnx(
         )
         print(f"ONNX模型已保存到: {onnx_path}")
         return True
-    except Exception as e:
-        print(f"转换到ONNX失败: {e}")
+    except Exception as error:
+        print(f"转换到ONNX失败: {error}")
         return False
 
 
-if __name__ == "__main__":
-    # 测试工具函数
-    print("测试工具函数...")
+def build_arg_parser():
+    """构建 utils.py 的命令行入口。"""
+    parser = argparse.ArgumentParser(description="GPT2ZERO 工具脚本")
+    subparsers = parser.add_subparsers(dest="command")
 
-    # 创建示例数据
-    data_file, test_file = create_sample_data(num_samples=100)
+    sample_parser = subparsers.add_parser(
+        "create-sample-data", help="创建示例训练数据与测试提示"
+    )
+    sample_parser.add_argument(
+        "--output-dir", type=str, default="./data", help="输出目录"
+    )
+    sample_parser.add_argument(
+        "--num-samples", type=int, default=1000, help="训练样本数量"
+    )
+    sample_parser.add_argument(
+        "--overwrite", action="store_true", help="覆盖现有示例数据文件"
+    )
 
-    # 分析数据
-    stats = analyze_text_data(data_file)
+    analyze_parser = subparsers.add_parser("analyze-data", help="分析文本数据文件")
+    analyze_parser.add_argument(
+        "file_path",
+        nargs="?",
+        default="./data/training_data.txt",
+        help="待分析的文本文件",
+    )
+    analyze_parser.add_argument(
+        "--max-samples", type=int, default=1000, help="最多读取的样本数"
+    )
 
-    # 测试模型大小计算
+    model_info_parser = subparsers.add_parser(
+        "model-info", help="导出模型参数信息到 JSON 文件"
+    )
+    model_info_parser.add_argument(
+        "--model-type",
+        choices=MODEL_CHOICES,
+        default="gpt2",
+        help="模型配置类型",
+    )
+    model_info_parser.add_argument(
+        "--output", type=str, default="model_info.json", help="输出文件路径"
+    )
+    model_info_parser.add_argument(
+        "--print-summary", action="store_true", help="同时打印逐层参数摘要"
+    )
+
+    return parser
+
+
+def export_model_info(model_type: str, output_path: str, print_summary: bool = False):
+    """按需构建模型并导出参数统计。"""
     from config import GPT2Config
     from model import GPT2LMHeadModel
 
-    config = GPT2Config.from_pretrained("gpt2")
+    config = GPT2Config.from_pretrained(model_type)
     model = GPT2LMHeadModel(config)
 
-    print_model_summary(model)
-    print_model_size(model, "GPT-2 Small")
+    if print_summary:
+        print_model_summary(model)
 
-    # 保存模型信息
-    save_model_info(model, "model_info.json")
+    print_model_size(model, model_type)
+    save_model_info(model, output_path)
+    return output_path
 
-    print("\n工具函数测试完成!")
-    print("\n工具函数测试完成!")
+
+def main():
+    """命令行入口。
+
+    默认行为保持为“创建示例数据”，与 README/QUICKSTART 的快速体验一致。
+    """
+    parser = build_arg_parser()
+    args = parser.parse_args()
+
+    if args.command in (None, "create-sample-data"):
+        output_dir = getattr(args, "output_dir", "./data")
+        num_samples = getattr(args, "num_samples", 1000)
+        overwrite = getattr(args, "overwrite", False)
+        create_sample_data(
+            output_dir=output_dir,
+            num_samples=num_samples,
+            overwrite=overwrite,
+        )
+        return 0
+
+    if args.command == "analyze-data":
+        stats = analyze_text_data(args.file_path, max_samples=args.max_samples)
+        return 0 if stats is not None else 1
+
+    if args.command == "model-info":
+        export_model_info(
+            model_type=args.model_type,
+            output_path=args.output,
+            print_summary=args.print_summary,
+        )
+        return 0
+
+    parser.print_help()
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

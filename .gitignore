@@ -1,4 +1,13 @@
 .venv/
+.vscode/
 checkpoints/
 checkpoints_fast/
 __pycache__/
+results/
+*.pyc
+*.pyo
+*.onnx
+.DS_Store
+generated_texts.txt
+model_info.json
+results_fast.txt
